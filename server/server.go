@@ -2,7 +2,7 @@ package server
 
 import (
 	"fmt"
-	"log"
+	logger "github.com/rs/zerolog/log"
 	"net"
 )
 
@@ -24,20 +24,22 @@ func (s *Server) Start() {
 		panic(err)
 	}
 
-	log.Printf("SERVER STARTED \n")
+	logger.Info().Msg("Server started")
 
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			log.Printf("error while receiving connection: %s\n", err)
+			logger.Error().Msgf("error while receiving connection: %s\n", err)
 		}
 
 		go func() {
 			s.conns = append(s.conns, conn)
+			logger.Info().Msg("New connection")
+
 			for {
 				msgBuf := make([]byte, BufferSize)
 				if _, err := conn.Read(msgBuf); err != nil {
-					log.Printf("error while reading message: %s\n", err)
+					logger.Error().Msgf("error while reading message: %s\n", err)
 					conn.Close()
 					break
 				}
@@ -50,7 +52,7 @@ func (s *Server) Start() {
 func (s *Server) SendMessageToAll(msg []byte) {
 	for _, conn := range s.conns {
 		if _, err := conn.Write(msg); err != nil {
-			log.Printf("errow while sending message to all users: %s", err)
+			logger.Error().Msgf("errow while sending message to all users: %s", err)
 		}
 	}
 }

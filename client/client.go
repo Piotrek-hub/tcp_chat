@@ -3,7 +3,9 @@ package client
 import (
 	"bufio"
 	"fmt"
+	logger "github.com/rs/zerolog/log"
 	"log"
+
 	"net"
 	"os"
 	"tcp_chat/server"
@@ -28,14 +30,13 @@ func New(scfg server.Config, username string) *Client {
 func (c *Client) Start() {
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", c.serverCfg.Addr, c.serverCfg.Port))
 	if err != nil {
-		log.Printf("error while trying to connect to server: %s\n", err)
+		logger.Error().Msgf("error while trying to connect to server: %s\n", err)
 	}
 
 	c.conn = conn
 
 	go func() {
 		c.ReadMessages()
-
 	}()
 
 	for {
@@ -53,7 +54,7 @@ func (c *Client) Start() {
 
 func (c *Client) SendMessage(msg []byte) {
 	if _, err := c.conn.Write(msg); err != nil {
-		log.Printf("error while sending message: %s\n", err)
+		logger.Error().Msgf("error while sending message: %s\n", err)
 	}
 }
 
@@ -61,14 +62,14 @@ func (c *Client) ReadMessages() {
 	for {
 		msgBuf := make([]byte, BufferSize)
 		if _, err := c.conn.Read(msgBuf); err != nil {
-			log.Printf("error while reading message: %s", err)
+			logger.Error().Msgf("error while reading message: %s", err)
 		}
 
 		c.messages = append(c.messages, msgBuf)
 
 		log.Print("\033[H\033[2J")
 		for _, msg := range c.messages {
-			log.Printf(string(msg))
+			log.Println(string(msg))
 		}
 	}
 }
