@@ -5,6 +5,8 @@ import (
 	"fmt"
 	logger "github.com/rs/zerolog/log"
 	"log"
+	"tcp_chat/message"
+	"tcp_chat/utils"
 
 	"net"
 	"os"
@@ -17,7 +19,7 @@ type Client struct {
 	serverCfg server.Config
 	username  string
 	conn      net.Conn
-	messages  [][]byte
+	messages  []*message.Message
 }
 
 func New(scfg server.Config, username string) *Client {
@@ -69,11 +71,16 @@ func (c *Client) ReadMessages() {
 			return
 		}
 
-		c.messages = append(c.messages, msgBuf)
+		if utils.IsZero(msgBuf) {
+			continue
+		}
 
-		log.Print("\033[H\033[2J")
+		msg := message.NewFromBufferWithTime(msgBuf)
+		c.messages = append(c.messages, msg)
+
+		fmt.Print("\033[H\033[2J")
 		for _, msg := range c.messages {
-			log.Println(string(msg))
+			fmt.Printf("%s\n", msg.Print())
 		}
 	}
 }

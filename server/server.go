@@ -5,6 +5,7 @@ import (
 	logger "github.com/rs/zerolog/log"
 	"log"
 	"net"
+	"tcp_chat/message"
 )
 
 const BufferSize = 1024
@@ -17,7 +18,7 @@ type Config struct {
 type Server struct {
 	Cfg      Config
 	conns    []net.Conn
-	messages [][]byte
+	messages []*message.Message
 }
 
 func New(cfg Config) *Server {
@@ -26,11 +27,11 @@ func New(cfg Config) *Server {
 	}
 }
 
-func (s *Server) GetMessages() [][]byte {
+func (s *Server) GetMessages() []*message.Message {
 	return s.messages
 }
 
-func (s *Server) AddMessage(msg []byte) {
+func (s *Server) AddMessage(msg *message.Message) {
 	s.messages = append(s.messages, msg)
 }
 
@@ -62,26 +63,28 @@ func (s *Server) Start() {
 					conn.Close()
 					break
 				}
-				s.SendMessageToAll(msgBuf)
+
+				msg := message.NewFromBuffer(msgBuf)
+				s.SendMessageToAll(msg)
 			}
 		}()
 	}
 }
 
-func (s *Server) SendOldMessages(conn net.Conn) {
-	for _, msg := range s.messages {
-		if _, err := conn.Write(msg); err != nil {
-			logger.Error().Err(err).Msgf("error while sending old messages")
+func (s *Server) SendMessageToAll(msg *message.Message) {
+	s.AddMessage(msg)
+
+	for _, conn := range s.conns {
+		if _, err := conn.Write(msg.PrintByte()); err != nil {
+			logger.Error().Err(err).Msgf("error while sending message to all users")
 		}
 	}
 }
 
-func (s *Server) SendMessageToAll(msg []byte) {
-	s.AddMessage(msg)
-
-	for _, conn := range s.conns {
-		if _, err := conn.Write(msg); err != nil {
-			logger.Error().Err(err).Msgf("error while sending message to all users")
+func (s *Server) SendOldMessages(conn net.Conn) {
+	for _, msg := range s.messages {
+		if _, err := conn.Write(msg.PrintByte()); err != nil {
+			logger.Error().Err(err).Msgf("error while sending old messages")
 		}
 	}
 }
