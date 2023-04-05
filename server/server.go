@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	logger "github.com/rs/zerolog/log"
+	"log"
 	"net"
 )
 
@@ -19,6 +20,12 @@ type Server struct {
 	messages [][]byte
 }
 
+func New(cfg Config) *Server {
+	return &Server{
+		Cfg: cfg,
+	}
+}
+
 func (s *Server) GetMessages() [][]byte {
 	return s.messages
 }
@@ -33,12 +40,13 @@ func (s *Server) Start() {
 		panic(err)
 	}
 
+	log.Print("\033[H\033[2J")
 	logger.Info().Msg("Server started")
 
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			logger.Error().Msgf("error while receiving connection: %s\n", err)
+			logger.Error().Err(err).Msg("error while receiving connection")
 		}
 
 		s.SendOldMessages(conn)
@@ -50,7 +58,7 @@ func (s *Server) Start() {
 			for {
 				msgBuf := make([]byte, BufferSize)
 				if _, err := conn.Read(msgBuf); err != nil {
-					logger.Error().Msgf("error while reading message: %s\n", err)
+					logger.Error().Err(err).Msg("error while reading message")
 					conn.Close()
 					break
 				}
@@ -63,7 +71,7 @@ func (s *Server) Start() {
 func (s *Server) SendOldMessages(conn net.Conn) {
 	for _, msg := range s.messages {
 		if _, err := conn.Write(msg); err != nil {
-			logger.Error().Msgf("error while sending old messages: %s", err)
+			logger.Error().Err(err).Msgf("error while sending old messages")
 		}
 	}
 }
@@ -73,7 +81,7 @@ func (s *Server) SendMessageToAll(msg []byte) {
 
 	for _, conn := range s.conns {
 		if _, err := conn.Write(msg); err != nil {
-			logger.Error().Msgf("errow while sending message to all users: %s", err)
+			logger.Error().Err(err).Msgf("error while sending message to all users")
 		}
 	}
 }

@@ -30,14 +30,14 @@ func New(scfg server.Config, username string) *Client {
 func (c *Client) Start() {
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", c.serverCfg.Addr, c.serverCfg.Port))
 	if err != nil {
-		logger.Error().Msgf("error while trying to connect to server: %s\n", err)
+		logger.Error().Err(err).Msg("error while trying to connect to server")
 	}
+
+	log.Print("\033[H\033[2J")
 
 	c.conn = conn
 
-	go func() {
-		c.ReadMessages()
-	}()
+	go c.ReadMessages()
 
 	for {
 		var input string
@@ -54,7 +54,7 @@ func (c *Client) Start() {
 
 func (c *Client) SendMessage(msg []byte) {
 	if _, err := c.conn.Write(msg); err != nil {
-		logger.Error().Msgf("error while sending message: %s\n", err)
+		logger.Error().Err(err).Msg("error while sending message")
 	}
 }
 
@@ -62,7 +62,11 @@ func (c *Client) ReadMessages() {
 	for {
 		msgBuf := make([]byte, BufferSize)
 		if _, err := c.conn.Read(msgBuf); err != nil {
-			logger.Error().Msgf("error while reading message: %s", err)
+			if err == net.ErrClosed {
+				logger.Error().Msg("server down")
+			}
+			logger.Error().Err(err).Msg("error while reading message")
+			return
 		}
 
 		c.messages = append(c.messages, msgBuf)
